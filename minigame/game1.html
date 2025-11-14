@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Number Guessing Game</title>
+<style>
+  body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #1f1c2c, #928dab);
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+  }
+  .game-container {
+    background: rgba(0,0,0,0.6);
+    padding: 30px 50px;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 0 20px #ff6ec7;
+  }
+  input {
+    padding: 10px;
+    border-radius: 5px;
+    border: none;
+    width: 80px;
+    text-align: center;
+    font-size: 16px;
+  }
+  button {
+    padding: 10px 20px;
+    border: none;
+    background: #ff6ec7;
+    color: #fff;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: 0.3s;
+  }
+  button:hover {
+    background: #ff2ec7;
+  }
+  .hint {
+    margin-top: 20px;
+    font-size: 18px;
+  }
+</style>
+</head>
+<body>
+<div class="game-container">
+  <h1>AI Number Guessing Game</h1>
+  <p>Guess a number between 1 and 100</p>
+  <input type="number" id="playerGuess" min="1" max="100">
+  <button onclick="makeGuess()">Guess</button>
+  <div class="hint" id="hint">AI is waiting for your guess...</div>
+</div>
+
+<script>
+let min = 1;
+let max = 100;
+let aiNumber = Math.floor(Math.random() * (max - min + 1)) + min;
+let attempts = 0;
+
+function makeGuess() {
+  const guessInput = document.getElementById('playerGuess');
+  const hint = document.getElementById('hint');
+  let playerGuess = Number(guessInput.value);
+  
+  if (!playerGuess || playerGuess < min || playerGuess > max) {
+    hint.textContent = `Please enter a number between ${min} and ${max}`;
+    return;
+  }
+
+  attempts++;
+
+  if (playerGuess === aiNumber) {
+    hint.textContent = `🎉 Congrats! You guessed the number ${aiNumber} in ${attempts} attempts.`;
+    guessInput.disabled = true;
+    return;
+  }
+
+  // AI logic: smarter hint
+  if (playerGuess < aiNumber) {
+    min = playerGuess + 1;
+    hint.textContent = `Too low! AI suggests guessing between ${min} and ${max}`;
+  } else {
+    max = playerGuess - 1;
+    hint.textContent = `Too high! AI suggests guessing between ${min} and ${max}`;
+  }
+
+  guessInput.value = '';
+  guessInput.focus();
+}
+</script>
+</body>
+</html>
