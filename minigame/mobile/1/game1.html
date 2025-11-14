@@ -14,25 +14,37 @@
         color: white;
         width: 100vw; height: 100vh;
     }
-    #gameContainer {
-        position: relative;
+    #mainLayout {
         width: 100vw;
         height: 100vh;
-        max-width: 500px;
-        max-height: 90vh;
-        margin: 0 auto;
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
-        background: none;
+        justify-content: flex-start;
+    }
+    #gameArea {
+        position: relative;
+        width: 100vw;
+        max-width: 500px;
+        height: 72vh;
+        max-height: 700px;
+        margin: 0 auto;
+        background: rgba(20,30,50,0.98);
+        border-bottom: 4px solid #ff6ec7;
+        box-shadow: 0 8px 24px #000a;
+        border-radius: 0 0 32px 32px;
+        overflow: hidden;
         z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     #gameCanvas {
         width: 100%;
         height: 100%;
         max-width: 500px;
-        max-height: 90vh;
+        max-height: 700px;
+        display: block;
     }
     #score {
         position: absolute;
@@ -93,6 +105,9 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        /* Add a shadow to visually separate from game area */
+        box-shadow: 0 -4px 32px #ff6ec7, 0 2px 16px #ff6ec7;
+        background-clip: padding-box;
     }
     #stick {
         width: 70px;
@@ -105,19 +120,84 @@
         top: 50%;
         transform: translate(-50%,-50%);
     }
+    #pauseBtn {
+        position: absolute;
+        top: 18px;
+        right: 18px;
+        z-index: 15;
+        background: #203a43;
+        color: #ff6ec7;
+        border: 2px solid #ff6ec7;
+        border-radius: 50%;
+        width: 48px;
+        height: 48px;
+        font-size: 1.6rem;
+        font-weight: bold;
+        box-shadow: 0 2px 8px #000a;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    #pauseBtn:active {
+        background: #2c5364;
+    }
+    #countdownOverlay {
+        display: none;
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(32,32,64,0.85);
+        z-index: 30;
+        align-items: center;
+        justify-content: center;
+        font-size: 4rem;
+        color: #ff6ec7;
+        font-weight: bold;
+        text-align: center;
+    }
+    #highScore {
+        position: absolute;
+        top: 60px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 1.2rem;
+        color: #fff;
+        text-shadow: 0 2px 8px #000a;
+        z-index: 11;
+    }
+    @media (max-width: 600px) {
+      #gameArea {
+        height: 60vh;
+        max-height: 400px;
+      }
+      #gameCanvas {
+        max-height: 400px;
+      }
+      #joystick {
+        width: 110px;
+        height: 110px;
+      }
+      #stick {
+        width: 55px;
+        height: 55px;
+      }
+    }
 </style>
 </head>
 <body>
-<div id="gameContainer">
-  <div id="score">Score: 0</div>
-  <div id="gameOver">
-      You Lost!<br>
-      <button id="restartBtn">Restart</button>
+<div id="mainLayout">
+  <div id="gameArea">
+    <div id="score">Score: 0</div>
+    <div id="highScore" style="display:none"></div>
+    <div id="gameOver">
+        You Lost!<br>
+        <button id="restartBtn">Restart</button>
+    </div>
+    <div id="countdownOverlay"></div>
+    <button id="pauseBtn" title="Pause">II</button>
+    <canvas id="gameCanvas"></canvas>
   </div>
-  <canvas id="gameCanvas"></canvas>
-</div>
-<div id="joystick">
-  <div id="stick"></div>
+  <div id="joystick">
+    <div id="stick"></div>
+  </div>
 </div>
 <script>
 const gameContainer = document.getElementById('gameContainer');
@@ -254,8 +334,72 @@ function drawCircle(obj, color, shadow) {
   ctx.restore();
 }
 
+const pauseBtn = document.getElementById('pauseBtn');
+const countdownOverlay = document.getElementById('countdownOverlay');
+const highScoreDiv = document.getElementById('highScore');
+let paused = false;
+let countdown = 0;
+let countdownTimer = null;
+let maxBalls = 4;
+let highScore = parseInt(localStorage.getItem('dodgeHighScore') || '0');
+
+function showHighScore() {
+  highScoreDiv.style.display = 'block';
+  highScoreDiv.innerText = 'High Score: ' + highScore;
+}
+function hideHighScore() {
+  highScoreDiv.style.display = 'none';
+}
+
+function showCountdownOverlay(text) {
+  countdownOverlay.style.display = 'flex';
+  countdownOverlay.innerText = text;
+}
+function hideCountdownOverlay() {
+  countdownOverlay.style.display = 'none';
+}
+
+function startCountdown(cb) {
+  let count = 3;
+  showCountdownOverlay(count);
+  countdown = count;
+  countdownTimer = setInterval(() => {
+    count--;
+    if (count > 0) {
+      showCountdownOverlay(count);
+    } else if (count === 0) {
+      showCountdownOverlay('Go!');
+    } else {
+      hideCountdownOverlay();
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+      cb && cb();
+    }
+  }, 700);
+}
+
+pauseBtn.addEventListener('click', function() {
+  if (paused) return;
+  paused = true;
+  showCountdownOverlay('Paused');
+});
+
+countdownOverlay.addEventListener('click', function() {
+  if (paused && countdownTimer == null) {
+    // Resume
+    startCountdown(() => {
+      paused = false;
+      hideCountdownOverlay();
+    });
+  }
+});
+
 function update() {
-  if(gameOver) return;
+  if (gameOver) return;
+  if (paused) {
+    requestAnimationFrame(update);
+    return;
+  }
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   // Draw level
   ctx.font = 'bold 1.2rem Arial';
@@ -273,6 +417,12 @@ function update() {
     if (checkCollision(player, b)) {
       gameOver = true;
       document.getElementById('gameOver').style.display = 'block';
+      // High score logic
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('dodgeHighScore', highScore);
+      }
+      showHighScore();
       return;
     }
   }
@@ -289,9 +439,9 @@ function update() {
       player.y = py;
     }
   }
-  // Spawn balls every 90 frames
+  // Spawn balls every 90 frames, but limit max balls
   frame++;
-  if (frame % 90 === 0) spawnBall();
+  if (frame % 90 === 0 && balls.length < maxBalls) spawnBall();
   // Score
   score++;
   document.getElementById('score').innerText = "Score: " + score;
@@ -302,7 +452,12 @@ document.getElementById('restartBtn').addEventListener('click', function() {
   location.reload();
 });
 
-update();
+// Start game with countdown
+showHighScore();
+startCountdown(() => {
+  hideCountdownOverlay();
+  update();
+});
 </script>
 </body>
 </html>
