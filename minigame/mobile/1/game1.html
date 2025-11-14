@@ -5,39 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>AI Dodgeball Arena - Mobile</title>
 <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    background: radial-gradient(circle, #0f2027, #203a43, #2c5364);
-  }
   body {
+    margin: 0;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background: radial-gradient(circle, #0f2027, #203a43, #2c5364);
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    color: #fff;
     height: 100vh;
-    width: 100vw;
-    box-sizing: border-box;
   }
-  #gameCanvas {
-    display: block;
-    margin: 0 auto;
+  canvas {
     background: #111;
     border: 3px solid #ff6ec7;
     border-radius: 15px;
     box-shadow: 0 0 20px #ff6ec7;
-    position: relative;
-    z-index: 1;
+    margin-top: 10px;
+    display: block;
+  }
+  h1 {
+    margin: 10px;
+    color: #ff6ec7;
   }
   #gameOver {
     display: none;
     text-align: center;
-    position: absolute;
-    left: 0; right: 0; top: 40%;
-    z-index: 10;
   }
   #restartBtn {
     padding: 10px 20px;
@@ -53,8 +46,9 @@
   #restartBtn:hover {
     background: #ff2e63;
   }
+  /* Joystick styles */
   #joystick {
-    position: absolute;
+    position: fixed;
     left: 50%;
     bottom: 40px;
     width: 140px;
@@ -62,11 +56,10 @@
     background: rgba(255,255,255,0.08);
     border: 2px solid #ff6ec7;
     border-radius: 50%;
-    z-index: 100;
+    z-index: 1000;
     touch-action: none;
     user-select: none;
     transform: translateX(-50%);
-    pointer-events: auto;
   }
   #stick {
     position: absolute;
@@ -90,36 +83,32 @@
   <div id="stick"></div>
 </div>
 <script>
-const BASE_WIDTH = 400;
-const BASE_HEIGHT = 700;
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 function resizeCanvas() {
-  let w = window.innerWidth;
-  let h = window.innerHeight;
-  let scale = Math.min(w / BASE_WIDTH, h / BASE_HEIGHT);
-  canvas.width = BASE_WIDTH;
-  canvas.height = BASE_HEIGHT;
-  canvas.style.width = (BASE_WIDTH * scale) + 'px';
-  canvas.style.height = (BASE_HEIGHT * scale) + 'px';
-  // Position joystick relative to canvas
+  // Fill the screen
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  canvas.style.width = '100vw';
+  canvas.style.height = '100vh';
+  // Update joystick size/position
   const joy = document.getElementById('joystick');
-  joy.style.width = (140 * scale) + 'px';
-  joy.style.height = (140 * scale) + 'px';
-  joy.style.left = `calc(50% - ${(BASE_WIDTH * scale) / 2}px + ${(BASE_WIDTH * scale) / 2}px)`;
-  joy.style.bottom = (40 * scale) + 'px';
-  joy.style.transform = 'translateX(-50%)';
   const stick = document.getElementById('stick');
-  stick.style.width = (70 * scale) + 'px';
-  stick.style.height = (70 * scale) + 'px';
+  let joySize = Math.max(canvas.width, canvas.height) * 0.18;
+  joy.style.width = joy.style.height = joySize + 'px';
+  joy.style.left = '50%';
+  joy.style.bottom = (canvas.height * 0.06) + 'px';
+  joy.style.transform = 'translateX(-50%)';
+  stick.style.width = stick.style.height = (joySize * 0.5) + 'px';
   stick.style.left = '50%';
   stick.style.top = '50%';
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-const player = { x: 200, y: 600, radius: 22, speed: 7, color: '#00ffcc' };
+// Use dynamic canvas size for all logic
+let player = { x: canvas.width/2, y: canvas.height*0.85, radius: Math.max(canvas.width, canvas.height)*0.032, speed: Math.max(canvas.width, canvas.height)*0.012, color: '#00ffcc' };
 let balls = [];
 let score = 0;
 let frame = 0;
@@ -147,19 +136,7 @@ const joy = document.getElementById('joystick');
 const stick = document.getElementById('stick');
 
 function updateJoystickPosition() {
-  // Place joystick at bottom center, scaled
-  let w = window.innerWidth;
-  let h = window.innerHeight;
-  let scale = Math.min(w / BASE_WIDTH, h / BASE_HEIGHT);
-  joy.style.width = (joystick.radius * 2 * scale) + 'px';
-  joy.style.height = (joystick.radius * 2 * scale) + 'px';
-  joy.style.left = '50%';
-  joy.style.bottom = (40 * scale) + 'px';
-  joy.style.transform = 'translateX(-50%)';
-  stick.style.width = (joystick.stickRadius * 2 * scale) + 'px';
-  stick.style.height = (joystick.stickRadius * 2 * scale) + 'px';
-  stick.style.left = '50%';
-  stick.style.top = '50%';
+  // Already handled in resizeCanvas
 }
 window.addEventListener('resize', updateJoystickPosition);
 updateJoystickPosition();
@@ -206,7 +183,7 @@ function getCurrentLevel() {
 
 function spawnBall() {
   // AI ball aims at player from its spawn point with some randomness
-  const radius = 15;
+  const radius = Math.max(canvas.width, canvas.height)*0.024;
   const x = Math.random() * (canvas.width - radius * 2) + radius;
   const y = -radius;
   const angleToPlayer = Math.atan2(player.y - y, player.x - x);
@@ -275,15 +252,12 @@ function checkCollision(a, b) {
 
 function draw() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  // Draw score
-  ctx.font = 'bold 40px Arial';
+  ctx.font = `bold ${Math.max(canvas.width,canvas.height)*0.06}px Arial`;
   ctx.fillStyle = '#ff6ec7';
   ctx.textAlign = 'center';
-  ctx.fillText(`Score: ${score}`, canvas.width/2, 60);
-  // Draw level
-  ctx.font = 'bold 28px Arial';
-  ctx.fillText('Level: ' + levels[level].name, canvas.width/2, 110);
-  // Draw player
+  ctx.fillText(`Score: ${score}`, canvas.width/2, canvas.height*0.09);
+  ctx.font = `bold ${Math.max(canvas.width,canvas.height)*0.045}px Arial`;
+  ctx.fillText('Level: ' + levels[level].name, canvas.width/2, canvas.height*0.16);
   ctx.fillStyle = player.color;
   ctx.beginPath();
   ctx.arc(player.x, player.y, player.radius, 0, Math.PI*2);
