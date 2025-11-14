@@ -3,125 +3,135 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>AI Dodgeball Arena - Mobile</title>
+<title>AI Dodge Game</title>
 <style>
-  body {
-    margin: 0;
-    overflow: hidden;
-    font-family: Arial, sans-serif;
-    background: radial-gradient(circle, #0f2027, #203a43, #2c5364);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    color: #fff;
-    height: 100vh;
-  }
-  canvas {
-    background: #111;
-    border: 3px solid #ff6ec7;
-    border-radius: 15px;
-    box-shadow: 0 0 20px #ff6ec7;
-    margin-top: 10px;
-    display: block;
-  }
-  h1 {
-    margin: 10px;
-    color: #ff6ec7;
-  }
-  #gameOver {
-    display: none;
-    text-align: center;
-  }
-  #restartBtn {
-    padding: 10px 20px;
-    font-size: 18px;
-    margin-top: 10px;
-    cursor: pointer;
-    border: none;
-    border-radius: 5px;
-    background: #ff6ec7;
-    color: #fff;
-    transition: 0.3s;
-  }
-  #restartBtn:hover {
-    background: #ff2e63;
-  }
-  /* Joystick styles */
-  #joystick {
-    position: fixed;
-    left: 50%;
-    bottom: 40px;
-    width: 140px;
-    height: 140px;
-    background: rgba(255,255,255,0.08);
-    border: 2px solid #ff6ec7;
-    border-radius: 50%;
-    z-index: 1000;
-    touch-action: none;
-    user-select: none;
-    transform: translateX(-50%);
-  }
-  #stick {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 70px;
-    height: 70px;
-    background: #ff6ec7;
-    border-radius: 50%;
-    transform: translate(-50%,-50%);
-  }
+    html, body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
+        font-family: 'Arial', sans-serif;
+        color: white;
+        width: 100vw; height: 100vh;
+    }
+    #gameContainer {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        max-width: 500px;
+        max-height: 90vh;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        z-index: 1;
+    }
+    #gameCanvas {
+        width: 100%;
+        height: 100%;
+        max-width: 500px;
+        max-height: 90vh;
+    }
+    #score {
+        position: absolute;
+        top: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 2.2rem;
+        color: #ff6ec7;
+        font-weight: bold;
+        text-shadow: 0 2px 8px #000a;
+        z-index: 10;
+    }
+    #gameOver {
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        font-size: 2.2rem;
+        color: #fff;
+        background: rgba(32,32,64,0.95);
+        border-radius: 18px;
+        padding: 32px 24px 24px 24px;
+        box-shadow: 0 0 24px #ff6ec7;
+        z-index: 20;
+    }
+    #restartBtn {
+        margin-top: 20px;
+        padding: 12px 32px;
+        font-size: 1.2rem;
+        background: #ff6ec7;
+        border: none;
+        border-radius: 10px;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+        box-shadow: 0 2px 8px #000a;
+        transition: background 0.2s;
+    }
+    #restartBtn:hover {
+        background: #ff2e63;
+    }
+    #joystick {
+        position: fixed;
+        left: 50%;
+        bottom: 3vh;
+        width: 140px;
+        height: 140px;
+        background: rgba(255,255,255,0.08);
+        border: 2.5px solid #ff6ec7;
+        border-radius: 50%;
+        z-index: 100;
+        touch-action: none;
+        user-select: none;
+        transform: translateX(-50%);
+        box-shadow: 0 2px 16px #ff6ec7;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    #stick {
+        width: 70px;
+        height: 70px;
+        background: #ff6ec7;
+        border-radius: 50%;
+        box-shadow: 0 2px 12px #ff6ec7;
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%,-50%);
+    }
 </style>
 </head>
 <body>
-<canvas id="gameCanvas"></canvas>
-<div id="gameOver">
-  <h1 id="finalScore"></h1>
-  <button id="restartBtn">Restart</button>
+<div id="gameContainer">
+  <div id="score">Score: 0</div>
+  <div id="gameOver">
+      You Lost!<br>
+      <button id="restartBtn">Restart</button>
+  </div>
+  <canvas id="gameCanvas"></canvas>
 </div>
 <div id="joystick">
   <div id="stick"></div>
 </div>
 <script>
+const gameContainer = document.getElementById('gameContainer');
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-function resizeCanvas() {
-  // Fill the screen
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  canvas.style.width = '100vw';
-  canvas.style.height = '100vh';
-  // Update joystick size/position
-  const joy = document.getElementById('joystick');
-  const stick = document.getElementById('stick');
-  let joySize = Math.max(canvas.width, canvas.height) * 0.18;
-  joy.style.width = joy.style.height = joySize + 'px';
-  joy.style.left = '50%';
-  joy.style.bottom = (canvas.height * 0.06) + 'px';
-  joy.style.transform = 'translateX(-50%)';
-  stick.style.width = stick.style.height = (joySize * 0.5) + 'px';
-  stick.style.left = '50%';
-  stick.style.top = '50%';
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
-
-// Use dynamic canvas size for all logic
-let player = { x: canvas.width/2, y: canvas.height*0.85, radius: Math.max(canvas.width, canvas.height)*0.032, speed: Math.max(canvas.width, canvas.height)*0.012, color: '#00ffcc' };
+// Player
+const player = {x: canvas.width/2, y: canvas.height*0.8, r: Math.max(canvas.width, canvas.height)*0.04, speed: Math.max(canvas.width, canvas.height)*0.012};
 let balls = [];
 let score = 0;
 let frame = 0;
-let gameRunning = true;
-let level = 0;
-const levels = [
-  { name: 'Slow', score: 0, speed: [2, 4] },
-  { name: 'Medium', score: 200, speed: [3, 5] },
-  { name: 'Fast', score: 400, speed: [4, 6] },
-  { name: 'Super Fast', score: 800, speed: [5, 7] },
-  { name: 'Flash', score: 1600, speed: [6, 8] },
-  { name: 'Sharinggan', score: 3200, speed: [7, 10] }
-];
+let gameOver = false;
 
 // Joystick state
 let joystick = {
@@ -131,16 +141,27 @@ let joystick = {
   radius: 70,
   stickRadius: 35
 };
-
 const joy = document.getElementById('joystick');
 const stick = document.getElementById('stick');
 
-function updateJoystickPosition() {
-  // Already handled in resizeCanvas
+function resizeAll() {
+  // Responsive container and canvas
+  let w = Math.min(window.innerWidth, 500);
+  let h = Math.min(window.innerHeight * 0.9, 900);
+  gameContainer.style.width = w + 'px';
+  gameContainer.style.height = h + 'px';
+  canvas.width = w;
+  canvas.height = h;
+  player.x = canvas.width/2;
+  player.y = canvas.height-80;
+  player.r = Math.max(canvas.width, canvas.height)*0.04;
+  joy.style.width = joy.style.height = (player.r*4.4) + 'px';
+  stick.style.width = stick.style.height = (player.r*2.2) + 'px';
 }
-window.addEventListener('resize', updateJoystickPosition);
-updateJoystickPosition();
+window.addEventListener('resize', resizeAll);
+resizeAll();
 
+// Joystick events
 joy.addEventListener('touchstart', function(e) {
   joystick.active = true;
   joystick.dx = 0;
@@ -151,18 +172,17 @@ joy.addEventListener('touchmove', function(e) {
   if (!joystick.active) return;
   const t = e.touches[0];
   const rect = joy.getBoundingClientRect();
-  let scale = joy.offsetWidth / (joystick.radius * 2);
-  let dx = (t.clientX - rect.left - joy.offsetWidth/2) / scale;
-  let dy = (t.clientY - rect.top - joy.offsetHeight/2) / scale;
+  let dx = t.clientX - rect.left - rect.width/2;
+  let dy = t.clientY - rect.top - rect.height/2;
   const dist = Math.sqrt(dx*dx + dy*dy);
-  if (dist > joystick.radius) {
-    dx = dx * joystick.radius / dist;
-    dy = dy * joystick.radius / dist;
+  if (dist > player.r*2.2) {
+    dx = dx * player.r*2.2 / dist;
+    dy = dy * player.r*2.2 / dist;
   }
   joystick.dx = dx;
   joystick.dy = dy;
-  stick.style.left = (50 + dx/joystick.radius*50) + '%';
-  stick.style.top = (50 + dy/joystick.radius*50) + '%';
+  stick.style.left = (50 + dx/(player.r*2.2)*50) + '%';
+  stick.style.top = (50 + dy/(player.r*2.2)*50) + '%';
   e.preventDefault();
 });
 joy.addEventListener('touchend', function(e) {
@@ -174,6 +194,16 @@ joy.addEventListener('touchend', function(e) {
   e.preventDefault();
 });
 
+let level = 0;
+const levels = [
+  { name: 'Slow', score: 0, speed: [3, 5] },
+  { name: 'Medium', score: 200, speed: [4, 6] },
+  { name: 'Fast', score: 400, speed: [5, 7] },
+  { name: 'Super Fast', score: 800, speed: [6, 8] },
+  { name: 'Flash', score: 1600, speed: [7, 10] },
+  { name: 'Sharinggan', score: 3200, speed: [8, 12] }
+];
+
 function getCurrentLevel() {
   for (let i = levels.length - 1; i >= 0; i--) {
     if (score >= levels[i].score) return i;
@@ -182,43 +212,15 @@ function getCurrentLevel() {
 }
 
 function spawnBall() {
-  // AI ball aims at player from its spawn point with some randomness
-  const radius = Math.max(canvas.width, canvas.height)*0.024;
-  const x = Math.random() * (canvas.width - radius * 2) + radius;
-  const y = -radius;
-  const angleToPlayer = Math.atan2(player.y - y, player.x - x);
-  const angle = angleToPlayer + (Math.random() - 0.5) * 0.6;
+  const r = Math.max(canvas.width, canvas.height)*0.035;
+  const x = Math.random() * (canvas.width - r*2) + r;
+  const y = -r;
   level = getCurrentLevel();
   const minSpeed = levels[level].speed[0];
   const maxSpeed = levels[level].speed[1];
-  const speed = minSpeed + Math.random() * (maxSpeed - minSpeed);
-  const ball = {
-    x,
-    y,
-    radius,
-    color: '#ff2e63',
-    dx: speed * Math.cos(angle),
-    dy: speed * Math.sin(angle)
-  };
-  if (balls.length < 40) balls.push(ball);
-}
-
-function updatePlayer() {
-  if (joystick.active && (joystick.dx !== 0 || joystick.dy !== 0)) {
-    const mag = Math.sqrt(joystick.dx*joystick.dx + joystick.dy*joystick.dy);
-    if (mag > 5) {
-      const nx = joystick.dx / joystick.radius;
-      const ny = joystick.dy / joystick.radius;
-      let px = player.x + nx * player.speed;
-      let py = player.y + ny * player.speed;
-      if (px - player.radius < 0) px = player.radius;
-      if (px + player.radius > canvas.width) px = canvas.width - player.radius;
-      if (py - player.radius < 0) py = player.radius;
-      if (py + player.radius > canvas.height) py = canvas.height - player.radius;
-      player.x = px;
-      player.y = py;
-    }
-  }
+  const angle = Math.PI/2 + (Math.random()-0.5)*0.7;
+  const speed = minSpeed + Math.random()*(maxSpeed-minSpeed);
+  balls.push({x, y, r, dx: speed*Math.cos(angle), dy: speed*Math.sin(angle), color: '#ff2e63'});
 }
 
 function updateBalls() {
@@ -226,85 +228,93 @@ function updateBalls() {
     const b = balls[i];
     b.x += b.dx;
     b.y += b.dy;
-    if (b.x - b.radius < 0) {
-      b.x = b.radius;
-      b.dx *= -1;
-    } else if (b.x + b.radius > canvas.width) {
-      b.x = canvas.width - b.radius;
-      b.dx *= -1;
-    }
-    if (b.y + b.radius > canvas.height) {
-      b.y = canvas.height - b.radius;
-      b.dy *= -1;
-    }
-    if (b.y < -200 || b.y > canvas.height + 200) {
-      balls.splice(i, 1);
-    }
+    // Bounce off walls
+    if (b.x - b.r < 0) { b.x = b.r; b.dx *= -1; }
+    if (b.x + b.r > canvas.width) { b.x = canvas.width - b.r; b.dx *= -1; }
+    if (b.y - b.r < 0) { b.y = b.r; b.dy *= -1; }
+    if (b.y + b.r > canvas.height) { b.y = canvas.height - b.r; b.dy *= -1; }
   }
 }
 
 function checkCollision(a, b) {
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  const distance = Math.sqrt(dx*dx + dy*dy);
-  return distance < a.radius + b.radius;
+  const dx = (a.x + a.r) - (b.x);
+  const dy = (a.y + a.r) - (b.y);
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  return dist < a.r + b.r;
 }
 
-function draw() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.font = `bold ${Math.max(canvas.width,canvas.height)*0.06}px Arial`;
+function drawCircle(obj, color, shadow) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(obj.x, obj.y, obj.r, 0, Math.PI*2);
+  ctx.shadowColor = shadow;
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.restore();
+}
+
+function update() {
+  if(gameOver) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Draw level
+  ctx.font = 'bold 1.2rem Arial';
   ctx.fillStyle = '#ff6ec7';
   ctx.textAlign = 'center';
-  ctx.fillText(`Score: ${score}`, canvas.width/2, canvas.height*0.09);
-  ctx.font = `bold ${Math.max(canvas.width,canvas.height)*0.045}px Arial`;
-  ctx.fillText('Level: ' + levels[level].name, canvas.width/2, canvas.height*0.16);
-  ctx.fillStyle = player.color;
-  ctx.beginPath();
-  ctx.arc(player.x, player.y, player.radius, 0, Math.PI*2);
-  ctx.fill();
-  balls.forEach(b => {
-    ctx.fillStyle = b.color;
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2);
-    ctx.fill();
-  });
-}
-
-function endGame() {
-  gameRunning = false;
-  document.getElementById('gameCanvas').style.display = 'none';
-  document.getElementById('gameOver').style.display = 'block';
-  document.getElementById('finalScore').textContent = `You Lose! Final Score: ${score}`;
-}
-
-document.getElementById('restartBtn').addEventListener('click', () => location.reload());
-
-function gameLoop() {
-  if(!gameRunning) return;
-
-  frame++;
-  updatePlayer();
+  ctx.fillText('Level: ' + levels[level].name, canvas.width/2, 40);
+  // Draw player
+  drawCircle(player, '#4CAF50', '#00ffcc');
+  // Draw balls
+  balls.forEach(b => drawCircle(b, b.color, '#ff6ec7'));
+  // Move balls
   updateBalls();
-
-  // Check collision with balls
-  for(let b of balls) {
-    if(checkCollision(player,b)) {
-      endGame();
+  // Check collision
+  for (let b of balls) {
+    if (checkCollision(player, b)) {
+      gameOver = true;
+      document.getElementById('gameOver').style.display = 'block';
       return;
     }
   }
-
-  // Spawn balls periodically
-  if(frame % 120 === 0) spawnBall();
-
-  draw();
+  // Player movement with joystick
+  if (joystick.active && (joystick.dx !== 0 || joystick.dy !== 0)) {
+    const mag = Math.sqrt(joystick.dx*joystick.dx + joystick.dy*joystick.dy);
+    if (mag > 5) {
+      const nx = joystick.dx / (player.r*2.2);
+      const ny = joystick.dy / (player.r*2.2);
+      let px = player.x + nx * player.speed;
+      let py = player.y + ny * player.speed;
+      if (px < 0) px = 0;
+      if (px + player.r*2 > canvas.width) px = canvas.width - player.r*2;
+      if (py < 0) py = 0;
+      if (py + player.r*2 > canvas.height) py = canvas.height - player.r*2;
+      player.x = px;
+      player.y = py;
+    }
+  }
+  // Spawn balls every 90 frames
+  frame++;
+  if (frame % 90 === 0) spawnBall();
+  // Score
   score++;
-  document.getElementById('score').textContent = `Score: ${score}`;
-
-  requestAnimationFrame(gameLoop);
+  document.getElementById('score').innerText = "Score: " + score;
+  requestAnimationFrame(update);
 }
 
-gameLoop();
+// Restart button
+document.getElementById('restartBtn').addEventListener('click', () => {
+    balls = [];
+    player.x = canvas.width/2;
+    player.y = canvas.height-80;
+    score = 0;
+    gameOver = false;
+    document.getElementById('score').innerText = "Score: 0";
+    document.getElementById('gameOver').style.display = 'none';
+    update();
+});
+
+// Start game
+update();
 </script>
 </body>
 </html>
