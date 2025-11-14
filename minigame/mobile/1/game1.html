@@ -163,6 +163,36 @@
         text-shadow: 0 2px 8px #000a;
         z-index: 11;
     }
+    #startOverlay {
+        display: flex;
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(32,32,64,0.92);
+        z-index: 40;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        font-size: 2.2rem;
+        color: #ff6ec7;
+        font-weight: bold;
+        text-align: center;
+    }
+    #startBtn {
+        margin-top: 32px;
+        padding: 18px 48px;
+        font-size: 1.5rem;
+        background: #ff6ec7;
+        border: none;
+        border-radius: 12px;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+        box-shadow: 0 2px 12px #ff6ec7;
+        transition: background 0.2s;
+    }
+    #startBtn:active {
+        background: #ff2e63;
+    }
     @media (max-width: 600px) {
       #gameArea {
         height: 60vh;
@@ -192,6 +222,10 @@
         <button id="restartBtn">Restart</button>
     </div>
     <div id="countdownOverlay"></div>
+    <div id="startOverlay">
+      <div>AI Dodge Game</div>
+      <button id="startBtn">Start</button>
+    </div>
     <button id="pauseBtn" title="Pause">II</button>
     <canvas id="gameCanvas"></canvas>
   </div>
@@ -199,265 +233,308 @@
     <div id="stick"></div>
   </div>
 </div>
+<audio id="sfx-spawn" src="https://cdn.jsdelivr.net/gh/gleitz/midi-js-soundfonts@gh-pages/FluidR3_GM/drums/Crash.mp3"></audio>
+<audio id="sfx-over" src="https://cdn.jsdelivr.net/gh/gleitz/midi-js-soundfonts@gh-pages/FluidR3_GM/drums/Side_Stick.mp3"></audio>
+<audio id="sfx-btn" src="https://cdn.jsdelivr.net/gh/gleitz/midi-js-soundfonts@gh-pages/FluidR3_GM/drums/Claves.mp3"></audio>
 <script>
-const gameContainer = document.getElementById('gameContainer');
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+window.onload = function() {
+  // DOM references
+  const gameContainer = document.getElementById('gameContainer');
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const joy = document.getElementById('joystick');
+  const stick = document.getElementById('stick');
+  const sfxSpawn = document.getElementById('sfx-spawn');
+  const sfxOver = document.getElementById('sfx-over');
+  const sfxBtn = document.getElementById('sfx-btn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const countdownOverlay = document.getElementById('countdownOverlay');
+  const highScoreDiv = document.getElementById('highScore');
+  const startOverlay = document.getElementById('startOverlay');
+  const startBtn = document.getElementById('startBtn');
 
-// Player
-const player = {x: canvas.width/2, y: canvas.height*0.8, r: Math.max(canvas.width, canvas.height)*0.04, speed: Math.max(canvas.width, canvas.height)*0.012};
-let balls = [];
-let score = 0;
-let frame = 0;
-let gameOver = false;
+  // Player
+  const player = {x: canvas.width/2, y: canvas.height*0.8, r: Math.max(canvas.width, canvas.height)*0.04, speed: Math.max(canvas.width, canvas.height)*0.012};
+  let balls = [];
+  let score = 0;
+  let frame = 0;
+  let gameOver = false;
 
-// Joystick state
-let joystick = {
-  active: false,
-  dx: 0,
-  dy: 0,
-  radius: 70,
-  stickRadius: 35
-};
-const joy = document.getElementById('joystick');
-const stick = document.getElementById('stick');
+  // Joystick state
+  let joystick = {
+    active: false,
+    dx: 0,
+    dy: 0,
+    radius: 70,
+    stickRadius: 35
+  };
 
-function resizeAll() {
-  // Responsive container and canvas
-  let w = Math.min(window.innerWidth, 500);
-  let h = Math.min(window.innerHeight * 0.9, 900);
-  gameContainer.style.width = w + 'px';
-  gameContainer.style.height = h + 'px';
-  canvas.width = w;
-  canvas.height = h;
-  player.x = canvas.width/2;
-  player.y = canvas.height-80;
-  player.r = Math.max(canvas.width, canvas.height)*0.04;
-  joy.style.width = joy.style.height = (player.r*4.4) + 'px';
-  stick.style.width = stick.style.height = (player.r*2.2) + 'px';
-}
-window.addEventListener('resize', resizeAll);
-resizeAll();
-
-// Joystick events
-joy.addEventListener('touchstart', function(e) {
-  joystick.active = true;
-  joystick.dx = 0;
-  joystick.dy = 0;
-  e.preventDefault();
-});
-joy.addEventListener('touchmove', function(e) {
-  if (!joystick.active) return;
-  const t = e.touches[0];
-  const rect = joy.getBoundingClientRect();
-  let dx = t.clientX - rect.left - rect.width/2;
-  let dy = t.clientY - rect.top - rect.height/2;
-  const dist = Math.sqrt(dx*dx + dy*dy);
-  if (dist > player.r*2.2) {
-    dx = dx * player.r*2.2 / dist;
-    dy = dy * player.r*2.2 / dist;
+  function resizeAll() {
+    // Responsive container and canvas
+    let w = Math.min(window.innerWidth, 500);
+    let h = Math.min(window.innerHeight * 0.9, 900);
+    gameContainer.style.width = w + 'px';
+    gameContainer.style.height = h + 'px';
+    canvas.width = w;
+    canvas.height = h;
+    player.x = canvas.width/2;
+    player.y = canvas.height-80;
+    player.r = Math.max(canvas.width, canvas.height)*0.04;
+    joy.style.width = joy.style.height = (player.r*4.4) + 'px';
+    stick.style.width = stick.style.height = (player.r*2.2) + 'px';
   }
-  joystick.dx = dx;
-  joystick.dy = dy;
-  stick.style.left = (50 + dx/(player.r*2.2)*50) + '%';
-  stick.style.top = (50 + dy/(player.r*2.2)*50) + '%';
-  e.preventDefault();
-});
-joy.addEventListener('touchend', function(e) {
-  joystick.active = false;
-  joystick.dx = 0;
-  joystick.dy = 0;
-  stick.style.left = '50%';
-  stick.style.top = '50%';
-  e.preventDefault();
-});
+  window.addEventListener('resize', resizeAll);
+  resizeAll();
 
-let level = 0;
-const levels = [
-  { name: 'Slow', score: 0, speed: [3, 5] },
-  { name: 'Medium', score: 200, speed: [4, 6] },
-  { name: 'Fast', score: 400, speed: [5, 7] },
-  { name: 'Super Fast', score: 800, speed: [6, 8] },
-  { name: 'Flash', score: 1600, speed: [7, 10] },
-  { name: 'Sharinggan', score: 3200, speed: [8, 12] }
-];
-
-function getCurrentLevel() {
-  for (let i = levels.length - 1; i >= 0; i--) {
-    if (score >= levels[i].score) return i;
-  }
-  return 0;
-}
-
-function spawnBall() {
-  const r = Math.max(canvas.width, canvas.height)*0.035;
-  const x = Math.random() * (canvas.width - r*2) + r;
-  const y = -r;
-  level = getCurrentLevel();
-  const minSpeed = levels[level].speed[0];
-  const maxSpeed = levels[level].speed[1];
-  const angle = Math.PI/2 + (Math.random()-0.5)*0.7;
-  const speed = minSpeed + Math.random()*(maxSpeed-minSpeed);
-  balls.push({x, y, r, dx: speed*Math.cos(angle), dy: speed*Math.sin(angle), color: '#ff2e63'});
-}
-
-function updateBalls() {
-  for (let i = balls.length - 1; i >= 0; i--) {
-    const b = balls[i];
-    b.x += b.dx;
-    b.y += b.dy;
-    // Bounce off walls
-    if (b.x - b.r < 0) { b.x = b.r; b.dx *= -1; }
-    if (b.x + b.r > canvas.width) { b.x = canvas.width - b.r; b.dx *= -1; }
-    if (b.y - b.r < 0) { b.y = b.r; b.dy *= -1; }
-    if (b.y + b.r > canvas.height) { b.y = canvas.height - b.r; b.dy *= -1; }
-  }
-}
-
-function checkCollision(a, b) {
-  const dx = (a.x + a.r) - (b.x);
-  const dy = (a.y + a.r) - (b.y);
-  const dist = Math.sqrt(dx*dx + dy*dy);
-  return dist < a.r + b.r;
-}
-
-function drawCircle(obj, color, shadow) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(obj.x, obj.y, obj.r, 0, Math.PI*2);
-  ctx.shadowColor = shadow;
-  ctx.shadowBlur = 18;
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.restore();
-}
-
-const pauseBtn = document.getElementById('pauseBtn');
-const countdownOverlay = document.getElementById('countdownOverlay');
-const highScoreDiv = document.getElementById('highScore');
-let paused = false;
-let countdown = 0;
-let countdownTimer = null;
-let maxBalls = 4;
-let highScore = parseInt(localStorage.getItem('dodgeHighScore') || '0');
-
-function showHighScore() {
-  highScoreDiv.style.display = 'block';
-  highScoreDiv.innerText = 'High Score: ' + highScore;
-}
-function hideHighScore() {
-  highScoreDiv.style.display = 'none';
-}
-
-function showCountdownOverlay(text) {
-  countdownOverlay.style.display = 'flex';
-  countdownOverlay.innerText = text;
-}
-function hideCountdownOverlay() {
-  countdownOverlay.style.display = 'none';
-}
-
-function startCountdown(cb) {
-  let count = 3;
-  showCountdownOverlay(count);
-  countdown = count;
-  countdownTimer = setInterval(() => {
-    count--;
-    if (count > 0) {
-      showCountdownOverlay(count);
-    } else if (count === 0) {
-      showCountdownOverlay('Go!');
-    } else {
-      hideCountdownOverlay();
-      clearInterval(countdownTimer);
-      countdownTimer = null;
-      cb && cb();
+  // Joystick events
+  joy.addEventListener('touchstart', function(e) {
+    joystick.active = true;
+    joystick.dx = 0;
+    joystick.dy = 0;
+    e.preventDefault();
+  });
+  joy.addEventListener('touchmove', function(e) {
+    if (!joystick.active) return;
+    const t = e.touches[0];
+    const rect = joy.getBoundingClientRect();
+    let dx = t.clientX - rect.left - rect.width/2;
+    let dy = t.clientY - rect.top - rect.height/2;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist > player.r*2.2) {
+      dx = dx * player.r*2.2 / dist;
+      dy = dy * player.r*2.2 / dist;
     }
-  }, 700);
-}
+    joystick.dx = dx;
+    joystick.dy = dy;
+    stick.style.left = (50 + dx/(player.r*2.2)*50) + '%';
+    stick.style.top = (50 + dy/(player.r*2.2)*50) + '%';
+    e.preventDefault();
+  });
+  joy.addEventListener('touchend', function(e) {
+    joystick.active = false;
+    joystick.dx = 0;
+    joystick.dy = 0;
+    stick.style.left = '50%';
+    stick.style.top = '50%';
+    e.preventDefault();
+  });
 
-pauseBtn.addEventListener('click', function() {
-  if (paused) return;
-  paused = true;
-  showCountdownOverlay('Paused');
-});
+  let level = 0;
+  const levels = [
+    { name: 'Slow', score: 0, speed: [3, 5] },
+    { name: 'Medium', score: 200, speed: [4, 6] },
+    { name: 'Fast', score: 400, speed: [5, 7] },
+    { name: 'Super Fast', score: 800, speed: [6, 8] },
+    { name: 'Flash', score: 1600, speed: [7, 10] },
+    { name: 'Sharinggan', score: 3200, speed: [8, 12] }
+  ];
 
-countdownOverlay.addEventListener('click', function() {
-  if (paused && countdownTimer == null) {
-    // Resume
-    startCountdown(() => {
-      paused = false;
-      hideCountdownOverlay();
-    });
+  function getCurrentLevel() {
+    for (let i = levels.length - 1; i >= 0; i--) {
+      if (score >= levels[i].score) return i;
+    }
+    return 0;
   }
-});
 
-function update() {
-  if (gameOver) return;
-  if (paused) {
-    requestAnimationFrame(update);
-    return;
+  function spawnBall() {
+    const r = Math.max(canvas.width, canvas.height)*0.035;
+    const x = Math.random() * (canvas.width - r*2) + r;
+    const y = -r;
+    level = getCurrentLevel();
+    const minSpeed = levels[level].speed[0];
+    const maxSpeed = levels[level].speed[1];
+    const angle = Math.PI/2 + (Math.random()-0.5)*0.7;
+    const speed = minSpeed + Math.random()*(maxSpeed-minSpeed);
+    balls.push({x, y, r, dx: speed*Math.cos(angle), dy: speed*Math.sin(angle), color: '#ff2e63'});
+    playSfx(sfxSpawn);
   }
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  // Draw level
-  ctx.font = 'bold 1.2rem Arial';
-  ctx.fillStyle = '#ff6ec7';
-  ctx.textAlign = 'center';
-  ctx.fillText('Level: ' + levels[level].name, canvas.width/2, 28);
-  // Draw player
-  drawCircle(player, '#4CAF50', '#00ffcc');
-  // Draw balls
-  balls.forEach(b => drawCircle(b, b.color, '#ff6ec7'));
-  // Move balls
-  updateBalls();
-  // Check collision
-  for (let b of balls) {
-    if (checkCollision(player, b)) {
-      gameOver = true;
-      document.getElementById('gameOver').style.display = 'block';
-      // High score logic
-      if (score > highScore) {
-        highScore = score;
-        localStorage.setItem('dodgeHighScore', highScore);
+
+  function updateBalls() {
+    for (let i = balls.length - 1; i >= 0; i--) {
+      const b = balls[i];
+      b.x += b.dx;
+      b.y += b.dy;
+      // Bounce off walls
+      if (b.x - b.r < 0) { b.x = b.r; b.dx *= -1; }
+      if (b.x + b.r > canvas.width) { b.x = canvas.width - b.r; b.dx *= -1; }
+      if (b.y - b.r < 0) { b.y = b.r; b.dy *= -1; }
+      if (b.y + b.r > canvas.height) { b.y = canvas.height - b.r; b.dy *= -1; }
+    }
+  }
+
+  function checkCollision(a, b) {
+    const dx = (a.x + a.r) - (b.x);
+    const dy = (a.y + a.r) - (b.y);
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    return dist < a.r + b.r;
+  }
+
+  function drawCircle(obj, color, shadow) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(obj.x, obj.y, obj.r, 0, Math.PI*2);
+    ctx.shadowColor = shadow;
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function playSfx(audio) {
+    if (!audio) return;
+    audio.currentTime = 0;
+    audio.play();
+  }
+
+  let paused = false;
+  let countdown = 0;
+  let countdownTimer = null;
+  let maxBalls = 4;
+  let highScore = parseInt(localStorage.getItem('dodgeHighScore') || '0');
+
+  function showHighScore() {
+    highScoreDiv.style.display = 'block';
+    highScoreDiv.innerText = 'High Score: ' + highScore;
+  }
+  function hideHighScore() {
+    highScoreDiv.style.display = 'none';
+  }
+
+  function showCountdownOverlay(text) {
+    countdownOverlay.style.display = 'flex';
+    countdownOverlay.innerText = text;
+  }
+  function hideCountdownOverlay() {
+    countdownOverlay.style.display = 'none';
+  }
+
+  function startCountdown(cb) {
+    let count = 3;
+    showCountdownOverlay(count);
+    countdown = count;
+    countdownTimer = setInterval(() => {
+      count--;
+      if (count > 0) {
+        showCountdownOverlay(count);
+      } else if (count === 0) {
+        showCountdownOverlay('Go!');
+      } else {
+        hideCountdownOverlay();
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+        cb && cb();
       }
+    }, 700);
+  }
+
+  pauseBtn.addEventListener('click', function() {
+    if (paused) return;
+    paused = true;
+    showCountdownOverlay('Paused');
+    playSfx(sfxBtn);
+  });
+
+  countdownOverlay.addEventListener('click', function() {
+    if (paused && countdownTimer == null) {
+      playSfx(sfxBtn);
+      startCountdown(() => {
+        paused = false;
+        hideCountdownOverlay();
+      });
+    }
+  });
+
+  let gameStarted = false;
+
+  function startGame() {
+    hideCountdownOverlay();
+    // Spawn initial balls (at least 1)
+    balls = [];
+    for (let i = 0; i < Math.min(2, maxBalls); i++) spawnBall();
+    gameStarted = true;
+    update();
+  }
+
+  startBtn.addEventListener('click', function() {
+    playSfx(sfxBtn);
+    startOverlay.style.display = 'none';
+    setTimeout(() => {
       showHighScore();
+      startCountdown(startGame);
+    }, 50); // Ensure overlay is hidden before countdown
+  });
+
+  // Hide overlays and pause at load
+  window.onload = function() {
+    startOverlay.style.display = 'flex';
+    countdownOverlay.style.display = 'none';
+    document.getElementById('gameOver').style.display = 'none';
+    paused = false;
+    gameStarted = false;
+  };
+
+  function update() {
+    if (!gameStarted) return;
+    if (gameOver) return;
+    if (paused) {
+      requestAnimationFrame(update);
       return;
     }
-  }
-  // Player movement with joystick
-  if (joystick.active && (joystick.dx !== 0 || joystick.dy !== 0)) {
-    const mag = Math.sqrt(joystick.dx*joystick.dx + joystick.dy*joystick.dy);
-    if (mag > 5) {
-      const nx = joystick.dx / (player.r*2.2);
-      const ny = joystick.dy / (player.r*2.2);
-      // Lower sensitivity
-      let px = player.x + nx * player.speed * 0.6;
-      let py = player.y + ny * player.speed * 0.6;
-      player.x = px;
-      player.y = py;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Draw level
+    ctx.font = 'bold 1.2rem Arial';
+    ctx.fillStyle = '#ff6ec7';
+    ctx.textAlign = 'center';
+    ctx.fillText('Level: ' + levels[level].name, canvas.width/2, 28);
+    // Draw player
+    drawCircle(player, '#4CAF50', '#00ffcc');
+    // Draw balls
+    balls.forEach(b => drawCircle(b, b.color, '#ff6ec7'));
+    // Move balls
+    updateBalls();
+    // Check collision
+    for (let b of balls) {
+      if (checkCollision(player, b)) {
+        gameOver = true;
+        document.getElementById('gameOver').style.display = 'block';
+        playSfx(sfxOver);
+        // High score logic
+        if (score > highScore) {
+          highScore = score;
+          localStorage.setItem('dodgeHighScore', highScore);
+        }
+        showHighScore();
+        return;
+      }
     }
+    // Player movement with joystick
+    if (joystick.active && (joystick.dx !== 0 || joystick.dy !== 0)) {
+      const mag = Math.sqrt(joystick.dx*joystick.dx + joystick.dy*joystick.dy);
+      if (mag > 5) {
+        const nx = joystick.dx / (player.r*2.2);
+        const ny = joystick.dy / (player.r*2.2);
+        // Lower sensitivity
+        let px = player.x + nx * player.speed * 0.6;
+        let py = player.y + ny * player.speed * 0.6;
+        player.x = px;
+        player.y = py;
+      }
+    }
+    // Spawn balls every 90 frames, but limit max balls
+    frame++;
+    if (frame % 90 === 0 && balls.length < maxBalls) spawnBall();
+    // Score
+    score++;
+    document.getElementById('score').innerText = "Score: " + score;
+    requestAnimationFrame(update);
   }
-  // Spawn balls every 90 frames, but limit max balls
-  frame++;
-  if (frame % 90 === 0 && balls.length < maxBalls) spawnBall();
-  // Score
-  score++;
-  document.getElementById('score').innerText = "Score: " + score;
-  requestAnimationFrame(update);
-}
 
-document.getElementById('restartBtn').addEventListener('click', function() {
-  location.reload();
-});
-
-// Start game with countdown
-showHighScore();
-startCountdown(() => {
-  hideCountdownOverlay();
-  update();
-});
+  document.getElementById('restartBtn').addEventListener('click', function() {
+    location.reload();
+  });
+};
 </script>
 </body>
 </html>
