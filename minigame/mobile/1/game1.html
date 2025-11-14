@@ -261,7 +261,7 @@ function update() {
   ctx.font = 'bold 1.2rem Arial';
   ctx.fillStyle = '#ff6ec7';
   ctx.textAlign = 'center';
-  ctx.fillText('Level: ' + levels[level].name, canvas.width/2, 40);
+  ctx.fillText('Level: ' + levels[level].name, canvas.width/2, 28);
   // Draw player
   drawCircle(player, '#4CAF50', '#00ffcc');
   // Draw balls
@@ -282,12 +282,9 @@ function update() {
     if (mag > 5) {
       const nx = joystick.dx / (player.r*2.2);
       const ny = joystick.dy / (player.r*2.2);
-      let px = player.x + nx * player.speed;
-      let py = player.y + ny * player.speed;
-      if (px < 0) px = 0;
-      if (px + player.r*2 > canvas.width) px = canvas.width - player.r*2;
-      if (py < 0) py = 0;
-      if (py + player.r*2 > canvas.height) py = canvas.height - player.r*2;
+      // Lower sensitivity
+      let px = player.x + nx * player.speed * 0.6;
+      let py = player.y + ny * player.speed * 0.6;
       player.x = px;
       player.y = py;
     }
@@ -301,19 +298,10 @@ function update() {
   requestAnimationFrame(update);
 }
 
-// Restart button
-document.getElementById('restartBtn').addEventListener('click', () => {
-    balls = [];
-    player.x = canvas.width/2;
-    player.y = canvas.height-80;
-    score = 0;
-    gameOver = false;
-    document.getElementById('score').innerText = "Score: 0";
-    document.getElementById('gameOver').style.display = 'none';
-    update();
+document.getElementById('restartBtn').addEventListener('click', function() {
+  location.reload();
 });
 
-// Start game
 update();
 </script>
 </body>
