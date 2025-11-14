@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Collector Adventure</title>
+<style>
+  body {
+    margin: 0;
+    font-family: 'Arial', sans-serif;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    color: #fff;
+    flex-direction: column;
+  }
+  canvas {
+    border: 3px solid #ff6ec7;
+    border-radius: 10px;
+    background: #111;
+    box-shadow: 0 0 20px #ff6ec7;
+  }
+  h1 {
+    color: #ff6ec7;
+    font-size: 28px;
+    margin: 10px;
+  }
+  #gameOver {
+    display: none;
+    text-align: center;
+  }
+  #restartBtn {
+    padding: 10px 20px;
+    font-size: 18px;
+    margin-top: 10px;
+    cursor: pointer;
+    border: none;
+    border-radius: 5px;
+    background: #ff6ec7;
+    color: #fff;
+    transition: 0.3s;
+  }
+  #restartBtn:hover {
+    background: #ff2e63;
+  }
+</style>
+</head>
+<body>
+<h1 id="score">Score: 0</h1>
+<canvas id="gameCanvas" width="700" height="500"></canvas>
+<div id="gameOver">
+  <h1 id="finalScore"></h1>
+  <button id="restartBtn">Restart</button>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const player = { x: 50, y: 50, size: 25, speed: 5, color: '#00ffcc' };
+let enemies = [];
+let gems = [];
+let score = 0;
+let keys = {};
+let frame = 0;
+let gameRunning = true;
+
+// Player controls
+document.addEventListener('keydown', e => keys[e.key] = true);
+document.addEventListener('keyup', e => keys[e.key] = false);
+
+function spawnEnemy() {
+  if(enemies.length >= 4) return; // limit enemies
+  const enemy = {
+    x: Math.random() * (canvas.width - 30),
+    y: Math.random() * (canvas.height - 30),
+    size: 25,
+    speed: 1.5 + Math.random()*1.5,
+    color: '#ff2e63'
+  };
+  enemies.push(enemy);
+}
+
+function spawnGem() {
+  if(gems.length >= 5) return; // limit gems
+  const gem = {
+    x: Math.random() * (canvas.width - 20),
+    y: Math.random() * (canvas.height - 20),
+    size: 15,
+    color: '#ffde59'
+  };
+  gems.push(gem);
+}
+
+function updatePlayer() {
+  if (keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
+  if (keys['ArrowDown'] && player.y < canvas.height - player.size) player.y += player.speed;
+  if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
+  if (keys['ArrowRight'] && player.x < canvas.width - player.size) player.x += player.speed;
+}
+
+function updateEnemies() {
+  enemies.forEach(e => {
+    if (player.x < e.x) e.x -= e.speed;
+    if (player.x > e.x) e.x += e.speed;
+    if (player.y < e.y) e.y -= e.speed;
+    if (player.y > e.y) e.y += e.speed;
+  });
+}
+
+function checkCollision(a, b) {
+  return a.x < b.x + b.size &&
+         a.x + a.size > b.x &&
+         a.y < b.y + b.size &&
+         a.y + a.size > b.y;
+}
+
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Draw player
+  ctx.fillStyle = player.color;
+  ctx.fillRect(player.x, player.y, player.size, player.size);
+
+  // Draw enemies
+  enemies.forEach(e => {
+    ctx.fillStyle = e.color;
+    ctx.fillRect(e.x, e.y, e.size, e.size);
+  });
+
+  // Draw gems
+  gems.forEach(g => {
+    ctx.fillStyle = g.color;
+    ctx.beginPath();
+    ctx.arc(g.x + g.size/2, g.y + g.size/2, g.size/2, 0, Math.PI*2);
+    ctx.fill();
+  });
+}
+
+function endGame() {
+  gameRunning = false;
+  document.getElementById('gameCanvas').style.display = 'none';
+  document.getElementById('gameOver').style.display = 'block';
+  document.getElementById('finalScore').textContent = `You Lose! Final Score: ${score}`;
+}
+
+document.getElementById('restartBtn').addEventListener('click', () => {
+  location.reload();
+});
+
+function gameLoop() {
+  if(!gameRunning) return;
+  frame++;
+  updatePlayer();
+  updateEnemies();
+
+  // Check collision with gems
+  gems.forEach((g, i) => {
+    if (checkCollision(player, g)) {
+      score += 10;
+      gems.splice(i,1);
+    }
+  });
+
+  // Check collision with enemies
+  for (let e of enemies) {
+    if (checkCollision(player, e)) {
+      endGame();
+      return;
+    }
+  }
+
+  // Spawn enemies & gems periodically
+  if (frame % 200 === 0) spawnEnemy();
+  if (frame % 120 === 0) spawnGem();
+
+  draw();
+  document.getElementById('score').textContent = `Score: ${score}`;
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>
